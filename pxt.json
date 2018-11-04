@@ -1,0 +1,25 @@
+{
+    "name": "ChocoRobot",
+    "version": "1.0.0",
+    "dependencies": {
+        "core": "*",
+        "neopixel": "github:microsoft/pxt-neopixel#v0.6.7",
+        "radio": "*"
+    },
+    "description": "巧克力编程盒竞技版",
+    "files": [
+        "README.md",
+        "choco.ts"
+    ],
+    "yotta": {
+        "config": {
+            "microbit-dal": {
+                "bluetooth": {
+                    "open": 1,
+                    "pairing_mode": 0,
+                    "whitelist": 0
+                }
+            }
+        }
+    }
+}
