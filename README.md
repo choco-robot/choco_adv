@@ -6,4 +6,3 @@ Extension for Choco mbit
  ## Supported targets
  * for PXT/microbit
 (The metadata above is needed for package search.)
-# choco_adv
