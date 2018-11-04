@@ -9,7 +9,7 @@
     "description": "巧克力编程盒竞技版",
     "files": [
         "README.md",
-        "choco.ts"
+        "choco_adv.ts"
     ],
     "yotta": {
         "config": {
