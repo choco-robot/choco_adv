@@ -6,12 +6,12 @@ namespace ChocoRobot {
     // let color_buf:Buffer;
     // let odom_buf:Buffer;
     let turn_off = false
-    let rightspeed = 0;     /** 左右轮速度，单位为cm/s */
-    let leftspeed = 0;
+    let rightspeed = 0.0;     /** 左右轮速度，单位为cm/s */
+    let leftspeed = 0.0;
     let base_controller: Move_base
     let moving=0;
     const update_rate = 25;
-    const MAX_SPEED = 40; /** 最大速度设为40cm/s */
+    const MAX_SPEED = 30; /** 最大速度设为30cm/s */
     const MAX_ANGULAR_SPEED =1.2 /** 最大角速度 1.2rad/s */
     const ticks_per_meter = 1710;
     const wheel_track = 21.2
@@ -106,7 +106,7 @@ namespace ChocoRobot {
 
         /** calculate angular velocity */
         angular_vel():number{
-            return 5*this.steering_angle()*  MAX_ANGULAR_SPEED
+            return 4.5*this.steering_angle()*  MAX_ANGULAR_SPEED
         }
 
         /** 逆运动学求解 */
@@ -158,8 +158,11 @@ namespace ChocoRobot {
         /** speed 0~100,distance单位为cm，正数前进，负数后退 */
         go_line(speed: number, distance: number) {
             let target_ticks = distance * ticks_per_meter / 100 /** 需要走过的目标脉冲数=距离（cm）*每米脉冲数÷100 */
+            let left_sum_ticks = 0           
+            let right_sum_ticks = 0
             let sum_ticks = 0                /** 已经走过的脉冲数，取左右轮的平均 */
             let reverse = 1;
+            let balance = 1.0;
             if (target_ticks < 0)
             {
                 reverse = -1
@@ -169,24 +172,33 @@ namespace ChocoRobot {
             while (1) {
                 this.update_ticks();
                 let last_ticks = (this.left_ticks + this.right_ticks) / 2
-                sum_ticks += last_ticks
+                left_sum_ticks += this.left_ticks
+                right_sum_ticks += this.right_ticks
+                balance =   this.pow(1.0*(right_sum_ticks+1)/(left_sum_ticks+1))
+                sum_ticks = (left_sum_ticks+right_sum_ticks)/2
                 let ticks_left=target_ticks-sum_ticks
                 if (ticks_left <= last_ticks)
                     break;
-                leftspeed = reverse * Math.min(ticks_left+50,180)/180.0 * MAX_SPEED* speed / 100 * (this.right_ticks+1)/(this.left_ticks+1);
-                rightspeed = reverse * Math.min(ticks_left+50,180)/180.0 * MAX_SPEED* speed / 100;
+                leftspeed = reverse * Math.min(ticks_left+30,180)/180.0 * speed *MAX_SPEED/ 100 * balance;
+                rightspeed = reverse * Math.min(ticks_left+30,180)/180.0 * speed *MAX_SPEED/ 100 /balance;
                 basic.pause(1000 / update_rate)
             }
             leftspeed = rightspeed = 255;/** 制动 */
             basic.pause(100)
             moving = 0
+            serial.writeValue("left",left_sum_ticks)
+            serial.writeValue("right",right_sum_ticks)
+
         }
         /** speed 0~100 ,angle单位为角度*/
         turn_in_place(speed: number, angle: number) {
             //let target_ticks = angle *3.14159 /180.0 * ticks_per_meter /10 * wheel_track  /** 需要走过的目标脉冲数 */
             let target_ticks = angle * ticks_per_meter /735
-            let sum_ticks = 0                /** 已经走过的脉冲数，取左右轮的平均 */
+            let left_sum_ticks = 0                /** 已经走过的脉冲数，取左右轮的平均 */
+            let right_sum_ticks = 0
+            let sum_ticks = 0
             let reverse = 1;
+            let balance = 1.0
             if (target_ticks < 0)
             {
                 reverse = -1
@@ -196,12 +208,15 @@ namespace ChocoRobot {
             while (1) {
                 this.update_ticks();
                 let last_ticks = (this.left_ticks + this.right_ticks) / 2
-                sum_ticks += last_ticks
+                left_sum_ticks += this.left_ticks
+                right_sum_ticks += this.right_ticks
+                sum_ticks = (left_sum_ticks+right_sum_ticks)/2
+                balance =   this.pow(1.0*(right_sum_ticks+1)/(left_sum_ticks+1))
                 let ticks_left=target_ticks-sum_ticks
                 if (ticks_left <= last_ticks)
                     break;
-                leftspeed = -reverse * Math.min(ticks_left+50,180)/180.0 * speed *MAX_SPEED/ 100 * (this.right_ticks+1)/(this.left_ticks+1);
-                rightspeed = reverse * Math.min(ticks_left+50,180)/180.0 * speed *MAX_SPEED/ 100;
+                leftspeed = -reverse * Math.min(ticks_left+50,180)/180.0 * speed *MAX_SPEED/ 100 * balance;
+                rightspeed = reverse * Math.min(ticks_left+50,180)/180.0 * speed *MAX_SPEED/ 100 / balance;
                 basic.pause(1000 / update_rate)
             }
             leftspeed = rightspeed = 255;/** 制动 */
@@ -257,8 +272,11 @@ namespace ChocoRobot {
         ret = pins.i2cReadBuffer(0x00, 2, false);
         if (ret[0] == 0xa0 && ret[1] == 0xa0)
             move(0, 0)
-        // else 
-        //     control.reset()
+        else 
+        {
+            basic.showIcon(IconNames.Sad)
+            while(1);
+        }    
         gripper_control(1);
         pins.setPull(DigitalPin.P1, PinPullMode.PullUp)
         pins.setPull(DigitalPin.P2, PinPullMode.PullUp)
@@ -271,6 +289,7 @@ namespace ChocoRobot {
         music.playTone(392, music.beat(BeatFraction.Half))
         music.playTone(523, music.beat(BeatFraction.Half))
         movebase_init();
+        basic.showIcon(IconNames.Yes)
         control.inBackground(() => {    //以update_rate为频率更新两轮速度
             while (1) {
                 if(moving)
@@ -311,8 +330,10 @@ namespace ChocoRobot {
     //% blockId=CarCtrl_straight block="移动|%index|速度 %speed |距离 %distence"
     //% weight=92
     //% group="移动控制"
-    //% speed.min=0 speed.max=100
+    //% speed.min=1 speed.max=10
+    //% speed.defl=10
     export function go_line(index: CarMove, speed: number, distance: number): void {
+        speed = Math.map(speed,1,10,30,100);
         if (index == 1)
             base_controller.go_line(speed, distance)
         else
@@ -323,8 +344,10 @@ namespace ChocoRobot {
     //% blockId=CarCtrl_turn block="移动|%index|速度 %speed |角度 %angle"
     //% weight=92
     //% group="移动控制"
-    //% speed.min=0 speed.max=100
+    //% speed.min=1 speed.max=10
+    //% speed.defl=10
     export function turn(index: CarTurn, speed: number, angle: number): void {
+        speed = Math.map(speed,1,10,30,100);
         if (index == 1)
             base_controller.turn_in_place(speed, angle)
         else
@@ -343,9 +366,11 @@ namespace ChocoRobot {
     //% blockId=Choco_move2 block="移动到 |x坐标 %x |y坐标 %y |方向 %angle |速度 %speed"
     //% weight=92
     //% inlineInputMode=inline
-    //% speed.min=0 speed.max=100
+    //% speed.min=1 speed.max=10
     //% group="移动控制"
+    //% speed.defl=10
     export function CarMove2(x: number, y: number, theta: number, speed: number): void {
+        speed = Math.map(speed,1,10,30,100);
         base_controller.move2goal(speed, x, y, theta);
     }
 
@@ -460,49 +485,77 @@ namespace ChocoRobot {
     //% weight=1 color="#6aa84f" icon="\uf0eb"
     export function turnoff_rainbowlight() {
         turn_off = true
+        basic.pause(200);
     }
 
-    /**
-     * 读取传感器数据.
-     */
-    //% blockId=i2c_readbuf block="更新传感器数据" weight=7 color="#3d85c6" weight=51
-    export function Readbuf() {
-        // let cmd = pins.createBuffer(5);
-        // cmd[0] = 0xc1;
-        // cmd[1] = 0;
-        // cmd[2] = 0;
-        // cmd[3] = 0
-        // cmd[4] = 0
-        // pins.i2cWriteBuffer(0x00, cmd);
-        // liner_buf = pins.i2cReadBuffer(0x00, 5, false);
-        // basic.pause(10);
-        // cmd[0] = 0xc2;
-        // pins.i2cWriteBuffer(0x00, cmd);
-        // color_buf = pins.i2cReadBuffer(0x00, 3, false);
-        // cmd[0] = 0xc3;
-        // pins.i2cWriteBuffer(0x00, cmd);
-        // odom_buf = pins.i2cReadBuffer(0x00, 6, false);
+    //% blockId=COLOR block="颜色 %color"
+    export function choose_Color(color:COLOR){
+        return color
     }
-    export enum RGB {
+    export enum COLOR {
         //% blockId=red block="红"
         Red = 1,
         //% blockId=green block="绿" 
         Green = 2,
         //% blockId=yellow block="蓝"
-        Yellow = 3
+        Blue = 3,
+        //% blockId=yellow block="黄"
+        Yellow
     }
+    export class RGB{
+        red:number
+        green:number
+        blue:number
 
+        RGB(){
+            this.red = 0
+            this.blue = 0
+            this.green = 0
+        }
+    }
+    export function RGB2HSL(rgb:RGB):number{
+        let max = Math.max(Math.max(rgb.red,rgb.green),rgb.blue)
+        let min = Math.min(Math.min(rgb.red,rgb.green),rgb.blue)
+        if(max == min)
+            return 0
+        else if(max==rgb.red && rgb.green>=rgb.blue)
+            return 60.0*(rgb.green-rgb.blue)/(max-min)
+        else if(max==rgb.red && rgb.green<rgb.blue)
+            return 60.0*(rgb.green-rgb.blue)/(max-min)+360
+        else if(max==rgb.green)
+            return 60.0*(rgb.blue-rgb.red)/(max-min)+120
+        else if(max==rgb.blue)
+            return 60.0*(rgb.red-rgb.green)/(max-min)+240
+        else return -1
+    }
     /**
-     * 返回颜色传感器数据.0-红，1-黄，2-蓝，3-绿
+     * 返回颜色传感器数据
      */
-    //% blockId=get_color block="检测到%rgb|色？" weight=7
-    export function get_color(rgb: RGB) {
-        // switch(rgb){
-        //     case 1:return color_buf[0];
-        //     case 2:return color_buf[1];
-        //     case 3:return color_buf[2];
-        //     default:return 0;
-        // }
+    //% blockId=get_color block="读取颜色传感器" weight=7
+    export function get_color():COLOR {
+        let cmd = pins.createBuffer(5);
+        let color_buf = pins.createBuffer(3);
+        cmd[0] = 0xc2;
+        cmd[1] = 0
+        cmd[2] = 0
+        cmd[3] = 0
+        cmd[4] = 0
+        pins.i2cWriteBuffer(0x00, cmd);
+        let rgb = new RGB() 
+        color_buf=pins.i2cReadBuffer(0x00, 3, false);
+        rgb.red=color_buf[0]
+        rgb.green=color_buf[1]
+        rgb.blue=color_buf[2]
+        let h = RGB2HSL(rgb)
+        if(h<45||h>270)
+            return COLOR.Red
+        else if(h>=45&&h<90)
+            return COLOR.Yellow
+        else if(h>=90&&h<150)
+            return COLOR.Green
+        else if(h>=150&&h<270)
+            return COLOR.Blue
+        else return 0
     }
 
     export enum Gripper{
@@ -522,7 +575,7 @@ namespace ChocoRobot {
     //% group="机械爪控制"
     export function gripper_control(pos:Gripper){
         let position = 0
-        let time = 1000
+        let time = 500
         let cmd = pins.createBuffer(5);
         if(pos == Gripper.UP||pos == Gripper.DOWN)
         {
@@ -534,22 +587,39 @@ namespace ChocoRobot {
                 cmd[1]=1
             else cmd[1]=2
             pins.i2cWriteBuffer(0x00, cmd);
-            basic.pause(1000)
-            cmd[1]=0
-            pins.i2cWriteBuffer(0x00, cmd);
+            basic.pause(500);
         }
         else
         {
             if(pos == Gripper.Release)
-            position = 600
+                cmd[1] = 0
             else
-            position = 1800
+                cmd[1] = 1
             cmd[0] = 0xc4;
-            cmd[1] = position;
-            cmd[2] = position>>8;
-            cmd[3] = time;
-            cmd[4] = time>>8
+            cmd[2] = 0
+            cmd[3] = 0
+            cmd[4] = 0
             pins.i2cWriteBuffer(0x00, cmd);
+            basic.pause(500);
         }
+    }
+    export enum key{
+        A = 1,
+        B
+    }
+    /**
+     * 按键继续
+     */
+    //% blockId=press_to_continue block="按 %button 键继续" weight=7
+    //% color="#10c810"
+    export function press_to_continue(button: key) {
+        if(button == 1)    
+            while (!(input.buttonIsPressed(Button.A))) {
+        
+            }
+        else
+            while (!(input.buttonIsPressed(Button.B))) {
+
+            }
     }
 }

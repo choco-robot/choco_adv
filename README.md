@@ -1,6 +1,7 @@
 # ChocoRobot
- - 巧克力编程盒竞技版扩展包
-Extension for Choco mbit    
+ - 巧克力编程盒竞技版扩展包beta版
+ - Extension for Choco mbit
+ - 2018/11/10    
  ## License
  MIT
  ## Supported targets
