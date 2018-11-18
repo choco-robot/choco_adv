@@ -651,14 +651,10 @@ namespace ChocoRobot {
         rgb.red=color_buf[0]
         rgb.green=color_buf[1]
         rgb.blue=color_buf[2]
-        let h = RGB2HSL(rgb)
-        if(h<45||h>270)
-            return COLOR.Red
-        else if(h>=45&&h<90)
+        //let h = RGB2HSL(rgb)
+        if(rgb.red+rgb.green>1.7*rgb.blue)
             return COLOR.Yellow
-        else if(h>=90&&h<150)
-            return COLOR.Green
-        else if(h>=150&&h<270)
+        else if(rgb.blue>rgb.red+rgb.green)
             return COLOR.Blue
         else return 0
     }
