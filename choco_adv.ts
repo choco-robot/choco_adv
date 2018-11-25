@@ -15,7 +15,7 @@ namespace ChocoRobot {
     let ir_state: Buffer
     let is_tracking_line = 0;
     const update_rate = 30;
-    const MAX_SPEED = 40; /** 最大速度设为40cm/s */
+    const MAX_SPEED = 35; /** 最大速度设为40cm/s */
     const MAX_ANGULAR_SPEED = 2 /** 最大角速度 2rad/s */
     const ticks_per_meter = 1487;
     const wheel_track = 18.5
@@ -160,40 +160,24 @@ namespace ChocoRobot {
                 this.turn_in_place(speed, 180 * (this.goal_pose.theta - this.my_pose.theta) / pi)
 
         }
-        /** speed 0~100,distance单位为cm，正数前进，负数后退 */
         go_line(speed: number, distance: number) {
-            let target_ticks = distance * ticks_per_meter / 100 * go_line_fix_param /** 需要走过的目标脉冲数=距离（cm）*每米脉冲数÷100 */
-            let delta_ticks = 0
-            let sum_ticks = 0                /** 已经走过的脉冲数，取左右轮的平均 */
-            let reverse = 1;
-            let balance = 1.0;
-            if (target_ticks < 0) {
-                reverse = -1
-                target_ticks = -target_ticks
-            }
-            moving = 1
-            while (1) {
-                this.update_ticks();
-                let last_ticks = (this.left_ticks + this.right_ticks) / 2
-                delta_ticks += this.right_ticks - this.left_ticks
-                balance = 1 + Math.constrain(0.005 * delta_ticks, -0.1, 0.1)
-                sum_ticks += last_ticks
-                let ticks_left = target_ticks - sum_ticks
-                if (ticks_left <= last_ticks) {
-                    leftspeed = rightspeed = 255;/** 制动 */
-                    break;
-                }
-                leftspeed = reverse * Math.min(ticks_left + 30, 120) / 120.0 * speed * MAX_SPEED / 100 * balance;
-                rightspeed = reverse * Math.min(ticks_left + 30, 120) / 120.0 * speed * MAX_SPEED / 100 / balance;
-                basic.pause(1000 / update_rate)
-            }
+            let cmd = pins.createBuffer(3);
+            cmd[0] = 0xd5
+            cmd[1] = speed
+            cmd[2] = 127+distance
+            pins.i2cWriteBuffer(0x78, cmd)   
+            basic.pause(1)
+            pins.i2cReadBuffer(0x78, 2);
+            cmd[0] = 0xd6
             basic.pause(500)
-            moving = 0
-            // serial.writeValue("left",left_sum_ticks)
-            // serial.writeValue("right",right_sum_ticks)
-            // serial.writeValue("count",count)
-            // serial.writeValue("balance",balance)
-
+            while (1) {
+                pins.i2cWriteBuffer(0x78, cmd)
+                ;
+                let ret = pins.i2cReadBuffer(0x78, 2);
+                if (ret[0] == 0xaf && ret[1] == 0xaf)
+                    break;
+                basic.pause(500);
+            }
         }
         /** speed 0~100,distance单位为cm，正数前进，负数后退 */
         go_line_until(speed: number, reverse: number) {
@@ -785,7 +769,7 @@ namespace ChocoRobot {
         // let h = RGB2HSL(rgb)
         if (rgb.red > Math.max(rgb.blue, rgb.green))
             return COLOR.Red
-        else if (rgb.red + rgb.green > 1.7 * rgb.blue)
+        else if (rgb.red + rgb.green > 1.6 * rgb.blue)
             return COLOR.Yellow
         else if (rgb.green > Math.max(rgb.red, rgb.blue))
             return COLOR.Green
