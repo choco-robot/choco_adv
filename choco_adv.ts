@@ -655,6 +655,7 @@ namespace ChocoRobot {
         cmd[2] = 0
         move(100, 100)
         basic.pause(1000)
+        move(0,0)
         pins.i2cWriteBuffer(0x78, cmd)
         ;
         pins.i2cReadBuffer(0x78, 2);
@@ -668,7 +669,7 @@ namespace ChocoRobot {
                 break;
             basic.pause(500);
         }
-        go_line(CarMove.Car_Run, 10, 2)
+        go_line(CarMove.Car_Run, 10, 10)
     }
 
     //% blockId=Choco_rainbowlight block="启动流水灯 流动速度 %v |亮度 %brightness"
