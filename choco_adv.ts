@@ -827,7 +827,7 @@ namespace ChocoRobot {
         // let h = RGB2HSL(rgb)
         if (rgb.red > Math.max(rgb.blue, rgb.green))
             return COLOR.Red
-        else if (rgb.red > rgb.blue-1&&rgb.red!=0&&rgb.green!=0)
+        else if (rgb.red > rgb.blue-5&&rgb.red!=0&&rgb.green!=0)
             return COLOR.Yellow
         else if (rgb.green > Math.max(rgb.red, rgb.blue))
             return COLOR.Green
