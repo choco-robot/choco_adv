@@ -1,12 +1,12 @@
 {
     "name": "ChocoRobot",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "dependencies": {
         "core": "*",
         "neopixel": "github:microsoft/pxt-neopixel#v0.6.10",
         "radio": "*"
     },
-    "description": "巧克力编程盒竞技版2018/11/24",
+    "description": "巧克力编程盒竞技版2018/12/01",
     "files": [
         "README.md",
         "choco_adv.ts"

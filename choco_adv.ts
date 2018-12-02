@@ -14,6 +14,7 @@ namespace ChocoRobot {
     let angle_fix_param = 1.0;
     let ir_state: Buffer
     let is_tracking_line = 0;
+    let lightness=0;
     const update_rate = 30;
     const MAX_SPEED = 35; /** 最大速度设为40cm/s */
     const MAX_ANGULAR_SPEED = 2 /** 最大角速度 2rad/s */
@@ -366,6 +367,17 @@ namespace ChocoRobot {
             while (1)
                 basic.pause(1000)
         }
+        let color_buf = pins.createBuffer(3);
+        cmd[0] = 0xc2;
+        cmd[1] = 0
+        cmd[2] = 0
+        pins.i2cWriteBuffer(0x78, cmd);
+        let rgb = new RGB()
+        color_buf = pins.i2cReadBuffer(0x78, 3, false);
+        rgb.red = color_buf[0]
+        rgb.green = color_buf[1]
+        rgb.blue = color_buf[2]
+        lightness=(rgb.red+rgb.green+rgb.blue)/3;
         //gripper_control(1);
         pins.setPull(DigitalPin.P1, PinPullMode.PullUp)
         pins.setPull(DigitalPin.P2, PinPullMode.PullUp)
@@ -813,25 +825,15 @@ namespace ChocoRobot {
         rgb.red = color_buf[0]
         rgb.green = color_buf[1]
         rgb.blue = color_buf[2]
-        basic.pause(100)
-        pins.i2cWriteBuffer(0x78, cmd);
-        color_buf = pins.i2cReadBuffer(0x78, 3, false);
-        rgb.red = (rgb.red+color_buf[0])/2
-        rgb.green = (rgb.green+color_buf[1])/2
-        rgb.blue = (rgb.blue+color_buf[2])/2 
-        // serial.writeValue("red",rgb.red)
-        // serial.writeValue("green",rgb.green)
-        // serial.writeValue("blue",rgb.blue)
-        if(rgb.blue>35&&rgb.green>25&&rgb.red>20)
+        let brightness=(rgb.blue+rgb.red+rgb.green)/3
+        serial.writeValue("red",rgb.red/brightness)
+        serial.writeValue("green",rgb.green/brightness)
+        serial.writeValue("blue",rgb.blue/brightness)
+        if(brightness>lightness*0.8)
             return COLOR.NONE
-        // let h = RGB2HSL(rgb)
-        if (rgb.red > Math.max(rgb.blue, rgb.green))
-            return COLOR.Red
-        else if (rgb.red > rgb.blue-5&&rgb.red!=0&&rgb.green!=0)
+        if (rgb.red/brightness>0.8&&rgb.green/brightness>1)
             return COLOR.Yellow
-        else if (rgb.green > Math.max(rgb.red, rgb.blue))
-            return COLOR.Green
-        else if (rgb.blue>rgb.green)
+        else if (rgb.blue/brightness>1.3&&rgb.red/brightness<0.6)
             return COLOR.Blue
         else return COLOR.NONE
     }
@@ -899,7 +901,8 @@ namespace ChocoRobot {
     }
     export enum key {
         A = 1,
-        B
+        B,
+        AB
     }
     /**
      * 按键继续
@@ -911,8 +914,12 @@ namespace ChocoRobot {
             while (!(input.buttonIsPressed(Button.A))) {
                 basic.pause(10);
             }
-        else
+        else if(button == 2)
             while (!(input.buttonIsPressed(Button.B))) {
+                basic.pause(10);
+            }
+        else 
+            while (!(input.buttonIsPressed(Button.B))&&!(input.buttonIsPressed(Button.A))) {
                 basic.pause(10);
             }
         basic.pause(500)
