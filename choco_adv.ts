@@ -829,7 +829,7 @@ namespace ChocoRobot {
         serial.writeValue("red",rgb.red/brightness)
         serial.writeValue("green",rgb.green/brightness)
         serial.writeValue("blue",rgb.blue/brightness)
-        if(brightness>lightness*0.8)
+        if(brightness>lightness*0.9)
             return COLOR.NONE
         if (rgb.red/brightness>0.8&&rgb.green/brightness>1)
             return COLOR.Yellow

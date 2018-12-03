@@ -1,6 +1,6 @@
 {
     "name": "ChocoRobot",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "dependencies": {
         "core": "*",
         "neopixel": "github:microsoft/pxt-neopixel#v0.6.10",
